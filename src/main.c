@@ -43,12 +43,26 @@ int main(int argc, char** argv) {
 
     const char* text = "Packers";
 
-    Ram* ram = ramInit(1024);
-    ramStoreString(ram, 0, text, strlen(text));
-    char read[512];
-    ramReadBytes(ram, 0, &read, strlen(text));
+    size_t address = 0;
 
-    printf("Text: %s \n", read);
+    Ram* ram = ramInit(1024);
+    ramStoreString(ram, address, text, strlen(text));
+    char read[512];
+    ramReadBytes(ram, address, read, strlen(text));
+
+    address += strlen(text) + 1;
+
+    int32_t i32 = 13898;
+    ramStoreInt32(ram, address, i32);
+    int32_t i32c = ramReadInt32(ram, address);
+    
+    float f32 = 349879.24234f;
+    ramStoreFloat(ram, address, f32);
+    float f32c = ramReadFloat(ram, address);
+    
+
+
+    printf("Text: %s -- %d vs %d -- %f vs %f \n", read, i32, i32c, f32, f32c);
 
     return 0;
 }
