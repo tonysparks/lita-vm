@@ -104,3 +104,61 @@ int8_t ramReadInt8(Ram* ram, size_t address) {
 
     return result;
 }
+
+
+Cpu32* cpuInit() {
+    Cpu32* cpu = (Cpu32*) litaMalloc(sizeof(Cpu32));
+    return cpu;
+}
+void   cpuFree(Cpu32* cpu) {
+    if(cpu) {
+        litaFree(cpu);
+    }
+}
+
+void cpuExecute(Cpu32* cpu, Bytecode* code) {
+    size_t pc  = code->pc;
+    size_t len = code->length;
+printf("Executing code\n");
+    while(pc < len) {
+        Instruction instr = code->instrs[pc++];
+        printf("I: %d\n", instr);
+        cpu->pc.as.address = &instr;
+
+        printf("Opcode: '%s' \n", OpcodeStr[instr]);
+        switch(instr) {
+            case NOOP:
+                break;
+            case MOVI:
+                break;
+        }
+    }
+}
+
+
+Vm*  vmInit(size_t stackSize, size_t ramSize) {
+    Ram* ram = ramInit(ramSize);
+    Cpu32* cpu = cpuInit();
+
+    Vm* vm = (Vm*) litaMalloc(sizeof(Vm));
+    vm->ram = ram;
+    vm->cpu = cpu;
+    vm->stackSize = stackSize;
+
+    return vm;
+}
+
+
+void vmFree(Vm* vm) {
+    if(vm) {
+        cpuFree(vm->cpu);
+        ramFree(vm->ram);
+        litaFree(vm);
+    }
+}
+
+ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
+    ExecutionResult result = {0};
+    cpuExecute(vm->cpu, code);
+    return result;
+}

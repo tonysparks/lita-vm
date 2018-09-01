@@ -64,5 +64,17 @@ int main(int argc, char** argv) {
 
     printf("Text: %s -- %d vs %d -- %f vs %f \n", read, i32, i32c, f32, f32c);
 
+    Bytecode code = {
+        .constants = NULL,
+        .instrs = {
+            0
+        },
+        .length = 1,
+        .pc = 0
+    };
+
+    Vm* vm = vmInit(1024, 1024 * 1024);
+    vmExecute(vm, &code);
+
     return 0;
 }
