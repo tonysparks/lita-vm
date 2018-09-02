@@ -1,3 +1,5 @@
 bin/litavm.exe
 .vscode/c_cpp_properties.json
 .vscode/settings.json
+bin/litavm.pdb
+bin/litavm.ilk
