@@ -24,9 +24,10 @@ int8_t  ramReadInt8(Ram* ram, size_t address);
 
 typedef struct Register {
     union {
-        int32_t        iVal;
-        float          fVal;
-        Instruction*   address;
+        int32_t  iVal;
+        int8_t   bVal;
+        float    fVal;
+        size_t   address;
     } as;
 } Register;
 
@@ -54,7 +55,6 @@ typedef struct Cpu32 {
 
 Cpu32* cpuInit();
 void   cpuFree(Cpu32* cpu);
-void cpuExecute(Cpu32* cpu, Bytecode* code);
 
 typedef struct Vm {
     size_t stackSize;

@@ -19,7 +19,7 @@ static void vmError(const char* format, ...) {
 
 
 Ram* ramInit(size_t size) {
-    void* mem = litaMalloc(sizeof(Ram) + size);
+    char* mem = litaMalloc(sizeof(Ram) + size);
     Ram* ram = (Ram*) mem;
     ram->size = size;
     ram->mem = mem + sizeof(Ram);
@@ -116,26 +116,6 @@ void   cpuFree(Cpu32* cpu) {
     }
 }
 
-void cpuExecute(Cpu32* cpu, Bytecode* code) {
-    size_t pc  = code->pc;
-    size_t len = code->length;
-printf("Executing code\n");
-    while(pc < len) {
-        Instruction instr = code->instrs[pc++];
-        printf("I: %d\n", instr);
-        cpu->pc.as.address = &instr;
-
-        printf("Opcode: '%s' \n", OpcodeStr[instr]);
-        switch(instr) {
-            case NOOP:
-                break;
-            case MOVI:
-                break;
-        }
-    }
-}
-
-
 Vm*  vmInit(size_t stackSize, size_t ramSize) {
     Ram* ram = ramInit(ramSize);
     Cpu32* cpu = cpuInit();
@@ -159,6 +139,102 @@ void vmFree(Vm* vm) {
 
 ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
     ExecutionResult result = {0};
-    cpuExecute(vm->cpu, code);
+    
+    Cpu32* cpu = vm->cpu;
+    Ram* ram = vm->ram;
+
+    if(!code->length || !code->instrs) {
+        return result;
+    }
+
+#define INSTR_AT(index) (&code->instrs[(index)])
+
+#define SET_ARG1_INT(instr,value)         \
+    do {                                  \
+        if (IS_ARG1_ADDR(instr))          \
+            ramStoreInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
+        else cpu->regs[ARG1_VALUE(instr)].as.iVal = (value);                      \
+    } while(0)
+
+#define SET_ARG1_FLOAT(instr,value)       \
+    do {                                  \
+        if (IS_ARG1_ADDR(instr))          \
+            ramStoreFloat(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
+        else cpu->regs[ARG1_VALUE(instr)].as.fVal = (value);                      \
+    } while(0)
+
+#define SET_ARG1_INT8(instr,value)       \
+    do {                                 \
+        if (IS_ARG1_ADDR(instr))         \
+            ramStoreInt8(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
+        else cpu->regs[ARG1_VALUE(instr)].as.bVal = (value);                     \
+    } while(0)
+
+#define GET_ARG1_INT(instr)                                        \
+    ((IS_ARG1_ADDR(instr)) ?                                       \
+        ramReadInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address) \
+        : cpu->regs[ARG1_VALUE(instr)].as.iVal)
+
+#define GET_ARG2_INT(instr)                                        \
+    ((IS_ARG2_ADDR(instr)) ?                                       \
+        ramReadInt32(ram, cpu->regs[ARG2_VALUE(instr)].as.address) \
+        : cpu->regs[ARG2_VALUE(instr)].as.iVal)
+
+#define GET_ARG2_FLOAT(instr)                                      \
+    ((IS_ARG2_ADDR(instr)) ?                                       \
+        ramReadFloat(ram, cpu->regs[ARG2_VALUE(instr)].as.address) \
+        : cpu->regs[ARG2_VALUE(instr)].as.fVal)
+
+#define GET_ARG2_INT8(instr)                                       \
+    ((IS_ARG2_ADDR(instr)) ?                                       \
+        ramReadInt8(ram, cpu->regs[ARG2_VALUE(instr)].as.address)  \
+        : cpu->regs[ARG2_VALUE(instr)].as.bVal)
+
+    Instruction* pc = code->instrs;
+    Instruction* end = INSTR_AT(code->length - 1);
+        
+    printf("Executing code\n");
+    
+    while(pc <= end) {
+        cpu->pc.as.address = pc - code->instrs; // TODO should address be a size_t or void*???
+
+        Instruction instr = *pc++;
+        
+        printf("I: %d\n", instr);
+        printf("Opcode: '%s' \n", OpcodeStr[instr]);
+
+        switch(instr) {
+            case NOOP: {
+                break;
+            }
+            case JMP: {
+                pc = INSTR_AT(ARG_JMP_VALUE(instr));
+                break;
+            }
+            case CALL: {
+                cpu->r.as.address = pc - code->instrs;
+                pc = INSTR_AT(ARG_JMP_VALUE(instr));
+                break;
+            }
+            case RET: {
+                pc = INSTR_AT(cpu->r.as.address);
+                break;
+            }
+            case MOVI: {
+                SET_ARG1_INT(instr, GET_ARG2_INT(instr));
+                break;
+            }
+            case MOVF: {
+                SET_ARG1_FLOAT(instr, GET_ARG2_FLOAT(instr));
+                break;
+            }
+            case MOVB: {
+                SET_ARG1_INT8(instr, GET_ARG2_INT8(instr));
+                break;
+            }
+        }
+    }
+
+#undef INSTR_AT    
     return result;
 }

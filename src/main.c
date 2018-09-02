@@ -59,16 +59,15 @@ int main(int argc, char** argv) {
     float f32 = 349879.24234f;
     ramStoreFloat(ram, address, f32);
     float f32c = ramReadFloat(ram, address);
-    
-
 
     printf("Text: %s -- %d vs %d -- %f vs %f \n", read, i32, i32c, f32, f32c);
+    Instruction is[1] = {
+        0         
+    };
 
     Bytecode code = {
         .constants = NULL,
-        .instrs = {
-            0
-        },
+        .instrs = is,
         .length = 1,
         .pc = 0
     };

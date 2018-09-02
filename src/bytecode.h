@@ -3,6 +3,52 @@
 
 typedef int32_t Instruction;
 
+// 0b11_1111_1111_1111_1111_1
+#define MAX_IMMEDIATE_VALUE 0x7ffff
+
+    
+#define INSTRUCTION_SIZE 32
+#define OPCODE_SIZE 6
+#define OPCODE_SHIFT ((INSTRUCTION_SIZE) - (OPCODE_SIZE))
+
+// 0b111111
+#define OPCODE_MASK 0x3f
+#define ARG1_SIZE 5
+#define ARG1_SHIFT 21
+// 0b11111
+#define ARG1_MASK 0x1f
+// 0b10000
+#define ARG1_ADDR_MASK 0x10
+// 0b01111
+#define ARG1_VALUE_MASK 0xf
+
+#define ARG2_SIZE 21
+#define ARG2_SHIFT 0
+//  0b1111_1111_1111_1111_1111_1
+#define ARG2_MASK 0x1fffff
+// 0b1000_0000_0000_0000_0000_0
+#define ARG2_REG_MASK 0x100000
+// 0b0100_0000_0000_0000_0000_0
+#define ARG2_ADDR_MASK 0x80000
+// 0b0100_0000_0000_0000_0000_0
+#define ARG2_IMM_MASK 0x80000
+// 0b0011_1111_1111_1111_1111_1
+#define ARG2_VALUE_MASK 0x7ffff    
+// 0b000000_1111_1111_1111_1111_1111_1111    
+#define ARG_JMP_VALUE_MASK 0xffffff
+
+#define OPCODE(instruction) (instruction >> OPCODE_SHIFT)
+
+#define IS_ARG1_ADDR(instruction) (((instruction >> ARG1_SHIFT) & ARG1_ADDR_MASK) != 0)
+#define ARG1_VALUE(instruction) ((instruction >> ARG1_SHIFT) & ARG1_VALUE_MASK)
+
+#define IS_ARG2_REG(instruction) (((instruction >> ARG2_SHIFT) & ARG2_REG_MASK) != 0)
+#define IS_ARG2_ADDR(instruction) (((instruction >> ARG2_SHIFT) & ARG2_ADDR_MASK) != 0)
+#define IS_ARG2_IMM(instruction) (((instruction >> ARG2_SHIFT) & ARG2_IMM_MASK) != 0)
+#define ARG2_VALUE(instruction) ((instruction >> ARG2_SHIFT) & ARG2_VALUE_MASK)
+
+#define ARG_JMP_VALUE(instruction) (instruction & ARG_JMP_VALUE_MASK)
+
 typedef enum Opcode {
     NOOP,
     MOVI,   // Moves the int value to the first register MOVI $a $b ($a = $b)
