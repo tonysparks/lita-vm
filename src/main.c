@@ -19,14 +19,14 @@
 
 #include "common.c"
 #include "buf.c"
-#include "parser.c"
+//#include "parser.c"
 #include "assembler.c"
 
 #include "vm.c"
 
 int main(int argc, char** argv) {
     //printf("Hello world\n");
-
+/*
     AssemblerInstruction* instrs = parse("Hello Bye\nWorld Gone\n");
     while(instrs) {
         for(int i = 0; i < instrs->numberOfArgs; i++) {
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
         instrs = instrs->next;
     }
-
+*/
     const char* text = "Packers";
 
     size_t address = 0;

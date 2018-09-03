@@ -608,6 +608,25 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         }
     }
 
-#undef INSTR_AT    
+#undef INSTR_AT 
+#undef SET_ARG1_INT   
+#undef SET_ARG1_FLOAT
+#undef SET_ARG1_INT8
+#undef SET_ARG1_ADDR
+#undef GET_ARG1_INT
+#undef GET_ARG1_FLOAT
+#undef GET_ARG2_INT
+#undef GET_ARG2_FLOAT
+#undef GET_ARG2_INT8
+#undef GET_CONST_INT
+#undef GET_CONST_INT8
+#undef GET_CONST_FLOAT
+#undef GET_CONST_ADDR
+#undef OP_INT
+#undef OP_INT8
+#undef OP_FLOAT
+#undef CHECK_DIV_ZERO_INT
+#undef CHECK_DIV_ZERO_INT8
+#undef CHECK_DIV_ZERO_FLOAT
     return result;
 }
