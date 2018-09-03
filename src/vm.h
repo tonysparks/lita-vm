@@ -22,6 +22,8 @@ int32_t ramReadInt32(Ram* ram, size_t address);
 float   ramReadFloat(Ram* ram, size_t address);
 int8_t  ramReadInt8(Ram* ram, size_t address);
 
+#define ADDRESS_SIZE 4
+
 typedef struct Register {
     union {
         int32_t  iVal;

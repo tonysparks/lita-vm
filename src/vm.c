@@ -149,9 +149,9 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
 
 #define INSTR_AT(index) (&code->instrs[(index)])
 
-#define SET_ARG1_INT(instr,value)         \
-    do {                                  \
-        if (IS_ARG1_ADDR(instr))          \
+#define SET_ARG1_INT(instr,value)                                                 \
+    do {                                                                          \
+        if (IS_ARG1_ADDR(instr))                                                  \
             ramStoreInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
         else cpu->regs[ARG1_VALUE(instr)].as.iVal = (value);                      \
     } while(0)
@@ -170,10 +170,29 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         else cpu->regs[ARG1_VALUE(instr)].as.bVal = (value);                     \
     } while(0)
 
+#define SET_ARG1_ADDR(instr,value)       \
+    do {                                 \
+        if (IS_ARG1_ADDR(instr))         \
+            ramStoreInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
+        else cpu->regs[ARG1_VALUE(instr)].as.address = (value);                   \
+    } while(0)
+
+
+
 #define GET_ARG1_INT(instr)                                        \
     ((IS_ARG1_ADDR(instr)) ?                                       \
         ramReadInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address) \
         : cpu->regs[ARG1_VALUE(instr)].as.iVal)
+
+#define GET_ARG1_INT8(instr)                                       \
+    ((IS_ARG1_ADDR(instr)) ?                                       \
+        ramReadInt8(ram, cpu->regs[ARG1_VALUE(instr)].as.address)  \
+        : cpu->regs[ARG1_VALUE(instr)].as.bVal)
+
+#define GET_ARG1_FLOAT(instr)                                      \
+    ((IS_ARG1_ADDR(instr)) ?                                       \
+        ramReadFloat(ram, cpu->regs[ARG1_VALUE(instr)].as.address) \
+        : cpu->regs[ARG1_VALUE(instr)].as.fVal)
 
 #define GET_ARG2_INT(instr)                                        \
     ((IS_ARG2_ADDR(instr)) ?                                       \
@@ -190,6 +209,65 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         ramReadInt8(ram, cpu->regs[ARG2_VALUE(instr)].as.address)  \
         : cpu->regs[ARG2_VALUE(instr)].as.bVal)
 
+#define GET_CONST_INT(instr)                                       \
+    ((IS_ARG2_IMM(instr)) ?                                        \
+        ramReadInt32(ram, code->constants[ARG2_VALUE(instr)])      \
+        : ARG2_VALUE(instr))
+
+#define GET_CONST_INT8(instr)                                      \
+    ((IS_ARG2_IMM(instr)) ?                                        \
+        ramReadInt8(ram, code->constants[ARG2_VALUE(instr)])       \
+        : (int8_t)ARG2_VALUE(instr))
+
+#define GET_CONST_FLOAT(instr)                                     \
+    (ramReadFloat(ram, code->constants[ARG2_VALUE(instr)]))
+
+#define GET_CONST_ADDR(instr)                                      \
+    (code->constants[ARG2_VALUE(instr)])
+
+#define OP_INT(instr,op)                                           \
+    do {                                                           \
+        int32_t aValue = GET_ARG1_INT(instr);                      \
+        int32_t bValue = GET_ARG2_INT(instr);                      \
+        int32_t result = aValue op bValue;                         \
+        SET_ARG1_INT(instr, result);                               \
+    } while(0)
+
+#define OP_INT8(instr,op)                                          \
+    do {                                                           \
+        int8_t aValue = GET_ARG1_INT8(instr);                      \
+        int8_t bValue = GET_ARG2_INT8(instr);                      \
+        int8_t result = aValue op bValue;                          \
+        SET_ARG1_INT8(instr, result);                              \
+    } while(0)
+
+#define OP_FLOAT(instr,op)                                         \
+    do {                                                           \
+        float aValue = GET_ARG1_FLOAT(instr);                      \
+        float bValue = GET_ARG2_FLOAT(instr);                      \
+        float result = aValue op bValue;                           \
+        SET_ARG1_FLOAT(instr, result);                             \
+    } while(0)    
+
+#define CHECK_DIV_ZERO_INT(instr)                                  \
+    do {                                                           \
+        int32_t value = GET_ARG2_INT(instr);                       \
+        if(value == 0) vmError("DivideByZeroError\n");             \
+    } while(0)
+
+#define CHECK_DIV_ZERO_INT8(instr)                                 \
+    do {                                                           \
+        int8_t value = GET_ARG2_INT8(instr);                       \
+        if(value == 0) vmError("DivideByZeroError\n");             \
+    } while(0)
+
+#define CHECK_DIV_ZERO_FLOAT(instr)                                \
+    do {                                                           \
+        float value = GET_ARG2_FLOAT(instr);                       \
+        if(value == 0) vmError("DivideByZeroError\n");             \
+    } while(0)
+
+
     Instruction* pc = code->instrs;
     Instruction* end = INSTR_AT(code->length - 1);
         
@@ -202,8 +280,9 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         
         printf("I: %d\n", instr);
         printf("Opcode: '%s' \n", OpcodeStr[instr]);
+        size_t opcode = OPCODE(instr);
 
-        switch(instr) {
+        switch(opcode) {
             case NOOP: {
                 break;
             }
@@ -231,6 +310,300 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
             case MOVB: {
                 SET_ARG1_INT8(instr, GET_ARG2_INT8(instr));
                 break;
+            }
+            case LDCI: {
+                SET_ARG1_INT(instr, GET_CONST_INT(instr));
+                break;
+            }
+            case LDCF: {
+                SET_ARG1_FLOAT(instr, GET_CONST_FLOAT(instr));
+                break;
+            }
+            case LDCB: {
+                SET_ARG1_INT8(instr, GET_CONST_INT8(instr));
+                break;
+            }
+            case LDCA: {
+                SET_ARG1_ADDR(instr, GET_CONST_ADDR(instr));
+                break;
+            }
+            case PUSHI: {
+                int32_t value = GET_ARG2_INT(instr);
+
+                cpu->sp.as.address -= ADDRESS_SIZE;
+                ramStoreInt32(ram, cpu->sp.as.address, value);
+                break;
+            }
+            case PUSHF: {
+                float value = GET_ARG2_FLOAT(instr);
+
+                cpu->sp.as.address -= ADDRESS_SIZE;
+                ramStoreFloat(ram, cpu->sp.as.address, value);
+                break;
+            }
+            case PUSHB: {
+                int8_t value = GET_ARG2_INT8(instr);
+
+                cpu->sp.as.address -= 1;
+                ramStoreInt8(ram, cpu->sp.as.address, value);
+                break;
+            }
+            case POPI: {
+                int32_t value = ramReadInt32(ram, cpu->sp.as.address);
+                cpu->sp.as.address += ADDRESS_SIZE;
+
+                SET_ARG1_INT(instr, value);
+                break;
+            }
+            case POPF: {
+                float value = ramReadFloat(ram, cpu->sp.as.address);
+                cpu->sp.as.address += ADDRESS_SIZE;
+
+                SET_ARG1_FLOAT(instr, value);
+                break;
+            }
+            case POPB: {
+                int8_t value = ramReadInt8(ram, cpu->sp.as.address);
+                cpu->sp.as.address += 1;
+
+                SET_ARG1_INT8(instr, value);
+                break;
+            }
+            case DUPI: {
+                int32_t value = ramReadInt32(ram, cpu->sp.as.address);
+                cpu->sp.as.address -= ADDRESS_SIZE;
+                ramStoreInt32(ram, cpu->sp.as.address, value);
+                
+                SET_ARG1_INT(instr, value);
+                break;
+            }
+            case DUPF: {
+                float value = ramReadFloat(ram, cpu->sp.as.address);
+                cpu->sp.as.address -= ADDRESS_SIZE;
+                ramStoreFloat(ram, cpu->sp.as.address, value);
+                
+                SET_ARG1_FLOAT(instr, value);
+                break;
+            }
+            case DUPB: {
+                int8_t value = ramReadInt8(ram, cpu->sp.as.address);
+                cpu->sp.as.address -= 1;
+                ramStoreInt8(ram, cpu->sp.as.address, value);
+                
+                SET_ARG1_INT8(instr, value);
+                break;
+            }
+            case IFI: {
+                int32_t yValue = GET_ARG2_INT(instr);
+                int32_t xValue = GET_ARG1_INT(instr);
+
+                if(xValue > yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case IFF: {
+                float yValue = GET_ARG2_FLOAT(instr);
+                float xValue = GET_ARG1_FLOAT(instr);
+
+                if(xValue > yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case IFB: {
+                int8_t yValue = GET_ARG2_INT8(instr);
+                int8_t xValue = GET_ARG1_INT8(instr);
+
+                if(xValue > yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case IFEI: {
+                int32_t yValue = GET_ARG2_INT(instr);
+                int32_t xValue = GET_ARG1_INT(instr);
+
+                if(xValue >= yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case IFEF: {
+                float yValue = GET_ARG2_FLOAT(instr);
+                float xValue = GET_ARG1_FLOAT(instr);
+
+                if(xValue >= yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case IFEB: {
+                int8_t yValue = GET_ARG2_INT8(instr);
+                int8_t xValue = GET_ARG1_INT8(instr);
+
+                if(xValue >= yValue) {
+                    pc++;
+                }
+
+                break;
+            }
+            case PRINTI: {
+                printf("%d", GET_ARG2_INT(instr));
+                break;
+            }
+            case PRINTF: {
+                printf("%f", GET_ARG2_FLOAT(instr));
+                break;
+            }
+            case PRINTB: {
+                printf("%d", GET_ARG2_INT8(instr));
+                break;
+            }
+            case PRINTC: {
+                printf("%c", (char)GET_ARG2_INT8(instr));
+                break;
+            }
+
+            /* ===================================================
+            * ALU operations 
+            * ===================================================
+            */
+            case ADDI: {
+                OP_INT(instr, +);
+                break;
+            }
+            case ADDF: {
+                OP_FLOAT(instr, +);
+                break;
+            }
+            case ADDB: {
+                OP_INT8(instr, +);
+                break;
+            }
+            case SUBI: {
+                OP_INT(instr, -);
+                break;
+            }
+            case SUBF: {
+                OP_FLOAT(instr, -);
+                break;
+            }
+            case SUBB: {
+                OP_INT8(instr, -);
+                break;
+            }
+            case MULI: {
+                OP_INT(instr, *);
+                break;
+            }
+            case MULF: {
+                OP_FLOAT(instr, *);
+                break;
+            }
+            case MULB: {
+                OP_INT8(instr, *);
+                break;
+            }
+            case DIVI: {
+                CHECK_DIV_ZERO_INT(instr);
+                OP_INT(instr, /);
+                break;
+            }
+            case DIVF: {
+                CHECK_DIV_ZERO_FLOAT(instr);
+                OP_FLOAT(instr, /);
+                break;
+            }
+            case DIVB: {
+                CHECK_DIV_ZERO_INT8(instr);
+                OP_INT8(instr, /);
+                break;
+            }
+            case MODI: {
+                CHECK_DIV_ZERO_INT(instr);
+                OP_INT(instr, %);
+                break;
+            }
+            case MODF: {
+                CHECK_DIV_ZERO_FLOAT(instr);
+                
+                float aValue = GET_ARG1_FLOAT(instr);
+                float bValue = GET_ARG2_FLOAT(instr);
+                float result = (int)aValue % (int)bValue;
+                SET_ARG1_FLOAT(instr, result);    
+                break;
+            }
+            case MODB: {
+                CHECK_DIV_ZERO_INT8(instr);
+                OP_INT8(instr, %);
+                break;
+            }
+            case ORI: {
+                OP_INT(instr, |);
+                break;
+            }
+            case ORB: {
+                OP_INT8(instr, |);
+                break;
+            }
+            case ANDI: {
+                OP_INT(instr, &);
+                break;
+            }
+            case ANDB: {
+                OP_INT8(instr, &);
+                break;
+            }
+            case NOTI: {
+                int32_t value = ~GET_ARG2_INT(instr);
+                SET_ARG1_INT(instr, value);
+                break;
+            }
+            case NOTB: {
+                int8_t value = ~GET_ARG2_INT8(instr);
+                SET_ARG1_INT8(instr, value);
+                break;
+            }
+            case XORI: {
+                OP_INT(instr, ^);
+                break;
+            }
+            case XORB: {
+                OP_INT8(instr, ^);
+                break;
+            }
+            case SZRLI: {
+                OP_INT(instr, >>);
+                break;
+            }
+            case SZRLB: {
+                OP_INT8(instr, >>);
+                break;
+            }
+            case SRLI: {
+                OP_INT(instr, >>);
+                break;
+            }
+            case SRLB: {
+                OP_INT8(instr, >>);
+                break;
+            }
+            case SLLI: {
+                OP_INT(instr, <<);
+                break;
+            }
+            case SLLB: {
+                OP_INT8(instr, <<);
+                break;
+            }
+            default: {
+                vmError("Unknown opcode: %d\n", opcode);
             }
         }
     }
