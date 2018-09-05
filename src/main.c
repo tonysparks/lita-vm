@@ -10,18 +10,10 @@
 #include <string.h>
 
 // program includes
-/*#include "common.h"
-#include "buf.h"
-#include "parser.h"
-#include "bytecode.h"
-#include "assembler.h"
-*/
-
 #include "common.c"
 #include "buf.c"
-//#include "parser.c"
+#include "bytecode.c"
 #include "assembler.c"
-
 #include "vm.c"
 
 int main(int argc, char** argv) {

@@ -36,32 +36,32 @@ void ramFree(Ram* ram) {
 
 #define CHECK_RANGE(ram, startAddress, endAddress) do { if( (startAddress) < 0 || ((startAddress) + (endAddress)) >= (ram)->size) vmError("Access violation error at address '0x%x' to '0x%x' \n", (startAddress), ((startAddress) + (endAddress)) ); } while(0)
 
-void ramStoreString(Ram* ram, size_t address, const char* value, size_t len) {
+void ramStoreString(Ram* ram, Address address, const char* value, size_t len) {
     CHECK_RANGE(ram, address, len);
 
     memcpy(ram->mem + address, value, len);
     ram->mem[address + len] = 0;
 }
 
-void ramStoreBytes(Ram* ram, size_t address, const char* value, size_t len) {
+void ramStoreBytes(Ram* ram, Address address, const char* value, size_t len) {
     CHECK_RANGE(ram, address, len);
 
     memcpy(ram->mem + address, value, len);
 }
 
-void ramStoreInt32(Ram* ram, size_t address, int32_t value) {
+void ramStoreInt32(Ram* ram, Address address, int32_t value) {
     CHECK_RANGE(ram, address, sizeof(value));
 
     memcpy(ram->mem + address, &value, sizeof(value));
 }
 
-void ramStoreFloat(Ram* ram, size_t address, float value) {
+void ramStoreFloat(Ram* ram, Address address, float value) {
     CHECK_RANGE(ram, address, sizeof(value));
 
     memcpy(ram->mem + address, &value, sizeof(value));
 }
 
-void ramStoreInt8(Ram* ram, size_t address, int8_t value) {
+void ramStoreInt8(Ram* ram, Address address, int8_t value) {
     CHECK_RANGE(ram, address, sizeof(value));
 
     memcpy(ram->mem + address, &value, sizeof(value));
@@ -70,7 +70,7 @@ void ramStoreInt8(Ram* ram, size_t address, int8_t value) {
 
 
 
-size_t ramReadBytes(Ram* ram, size_t address, char* value, size_t len) {
+size_t ramReadBytes(Ram* ram, Address address, char* value, size_t len) {
     CHECK_RANGE(ram, address, len);
 
     memcpy(value, ram->mem + address, len);
@@ -78,7 +78,7 @@ size_t ramReadBytes(Ram* ram, size_t address, char* value, size_t len) {
     return len;
 }
 
-int32_t ramReadInt32(Ram* ram, size_t address) {
+int32_t ramReadInt32(Ram* ram, Address address) {
     CHECK_RANGE(ram, address, sizeof(int32_t));
 
     int32_t result = 0;
@@ -87,7 +87,7 @@ int32_t ramReadInt32(Ram* ram, size_t address) {
     return result;
 }
 
-float ramReadFloat(Ram* ram, size_t address) {
+float ramReadFloat(Ram* ram, Address address) {
     CHECK_RANGE(ram, address, sizeof(float));
     
     float result = 0;
@@ -96,7 +96,7 @@ float ramReadFloat(Ram* ram, size_t address) {
     return result;
 }
 
-int8_t ramReadInt8(Ram* ram, size_t address) {
+int8_t ramReadInt8(Ram* ram, Address address) {
     CHECK_RANGE(ram, address, sizeof(int8_t));
     
     int8_t result = 0;
@@ -114,6 +114,88 @@ void   cpuFree(Cpu32* cpu) {
     if(cpu) {
         litaFree(cpu);
     }
+}
+
+int    cpuGetRegisterIndex(Cpu32* cpu, const char* name) {    
+    if(!strcmp(name, "sp") || !strcmp(name, "SP")) {
+        return 0;
+    }
+    else if(!strcmp(name, "pc") || !strcmp(name, "PC")) {
+        return 1;
+    }
+    else if(!strcmp(name, "r") || !strcmp(name, "R")) {
+        return 2;
+    }
+    else if(!strcmp(name, "h") || !strcmp(name, "H")) {
+        return 3;
+    }
+    else if(!strcmp(name, "a") || !strcmp(name, "A")) {
+        return 4;
+    }
+    else if(!strcmp(name, "b") || !strcmp(name, "B")) {
+        return 5;
+    }
+    else if(!strcmp(name, "c") || !strcmp(name, "C")) {
+        return 6;
+    }
+    else if(!strcmp(name, "d") || !strcmp(name, "D")) {
+        return 7;
+    }
+    else if(!strcmp(name, "i") || !strcmp(name, "I")) {
+        return 8;
+    }
+    else if(!strcmp(name, "j") || !strcmp(name, "J")) {
+        return 9;
+    }
+    else if(!strcmp(name, "k") || !strcmp(name, "K")) {
+        return 10;
+    }
+    else if(!strcmp(name, "u") || !strcmp(name, "U")) {
+        return 11;
+    }
+
+    return -1;
+}
+
+Register* cpuGetRegister(Cpu32* cpu, const char* name) {    
+    if(!strcmp(name, "sp") || !strcmp(name, "SP")) {
+        return &cpu->sp;
+    }
+    else if(!strcmp(name, "pc") || !strcmp(name, "PC")) {
+        return &cpu->pc;
+    }
+    else if(!strcmp(name, "r") || !strcmp(name, "R")) {
+        return &cpu->r;
+    }
+    else if(!strcmp(name, "h") || !strcmp(name, "H")) {
+        return &cpu->h;
+    }
+    else if(!strcmp(name, "a") || !strcmp(name, "A")) {
+        return &cpu->a;
+    }
+    else if(!strcmp(name, "b") || !strcmp(name, "B")) {
+        return &cpu->b;
+    }
+    else if(!strcmp(name, "c") || !strcmp(name, "C")) {
+        return &cpu->c;
+    }
+    else if(!strcmp(name, "d") || !strcmp(name, "D")) {
+        return &cpu->d;
+    }
+    else if(!strcmp(name, "i") || !strcmp(name, "I")) {
+        return &cpu->i;
+    }
+    else if(!strcmp(name, "j") || !strcmp(name, "J")) {
+        return &cpu->j;
+    }
+    else if(!strcmp(name, "k") || !strcmp(name, "K")) {
+        return &cpu->k;
+    }
+    else if(!strcmp(name, "u") || !strcmp(name, "U")) {
+        return &cpu->u;
+    }
+
+    return NULL;
 }
 
 Vm*  vmInit(size_t stackSize, size_t ramSize) {
@@ -274,7 +356,7 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
     printf("Executing code\n");
     
     while(pc <= end) {
-        cpu->pc.as.address = pc - code->instrs; // TODO should address be a size_t or void*???
+        cpu->pc.as.address = pc - code->instrs; 
 
         Instruction instr = *pc++;
         

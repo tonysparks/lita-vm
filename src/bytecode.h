@@ -2,6 +2,7 @@
 #define BYTECODE_H
 
 typedef int32_t Instruction;
+typedef uint32_t Address;
 
 // 0b11_1111_1111_1111_1111_1
 #define MAX_IMMEDIATE_VALUE 0x7ffff
@@ -217,13 +218,14 @@ const char* OpcodeStr[] = {
     [SLLB] = "SLLB"  
 };
 
-Opcode fromString(const char* opcodeStr);
+Opcode opcodeFromString(const char* opcodeStr);
+size_t opcodeNumArgs(Opcode opcode);
 
 typedef struct Bytecode {
-    uint32_t* constants;
+    Address* constants;
     Instruction* instrs;
-    size_t length;
-    size_t pc;
+    Address length;
+    Address pc;
 
 } Bytecode;
 

@@ -2,6 +2,7 @@
 #define LITA_VM_H
 
 #include <stdint.h>
+#include "bytecode.h"
 
 typedef struct Ram {
     size_t size;
@@ -11,16 +12,16 @@ typedef struct Ram {
 Ram* ramInit(size_t size);
 void ramFree(Ram* ram);
 
-void ramStoreString(Ram* ram, size_t address, const char* value, size_t len);
-void ramStoreBytes(Ram* ram, size_t address, const char* value, size_t len);
-void ramStoreInt32(Ram* ram, size_t address, int32_t value);
-void ramStoreFloat(Ram* ram, size_t address, float value);
-void ramStoreInt8(Ram* ram, size_t address, int8_t value);
+void ramStoreString(Ram* ram, Address address, const char* value, size_t len);
+void ramStoreBytes(Ram* ram, Address address, const char* value, size_t len);
+void ramStoreInt32(Ram* ram, Address address, int32_t value);
+void ramStoreFloat(Ram* ram, Address address, float value);
+void ramStoreInt8(Ram* ram, Address address, int8_t value);
 
-size_t  ramReadBytes(Ram* ram, size_t address, char* value, size_t len);
-int32_t ramReadInt32(Ram* ram, size_t address);
-float   ramReadFloat(Ram* ram, size_t address);
-int8_t  ramReadInt8(Ram* ram, size_t address);
+size_t  ramReadBytes(Ram* ram, Address address, char* value, size_t len);
+int32_t ramReadInt32(Ram* ram, Address address);
+float   ramReadFloat(Ram* ram, Address address);
+int8_t  ramReadInt8(Ram* ram, Address address);
 
 #define ADDRESS_SIZE 4
 
@@ -29,7 +30,7 @@ typedef struct Register {
         int32_t  iVal;
         int8_t   bVal;
         float    fVal;
-        size_t   address;
+        Address  address;
     } as;
 } Register;
 
@@ -57,6 +58,8 @@ typedef struct Cpu32 {
 
 Cpu32* cpuInit();
 void   cpuFree(Cpu32* cpu);
+Register* cpuGetRegister(Cpu32* cpu, const char* name);
+int       cpuGetRegisterIndex(Cpu32* cpu, const char* name);
 
 typedef struct Vm {
     size_t stackSize;

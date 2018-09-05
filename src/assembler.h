@@ -2,7 +2,8 @@
 #define ASSEMBLER_H
 
 #include "bytecode.h"
+#include "vm.h"
 
-Bytecode* compile(const char* assembly);
-
+Bytecode* compile(Vm* vm, const char* assembly);
+void      bytecodeFree(Bytecode* code);
 #endif
