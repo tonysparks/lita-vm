@@ -58,8 +58,7 @@ typedef struct Cpu32 {
 
 Cpu32* cpuInit();
 void   cpuFree(Cpu32* cpu);
-Register* cpuGetRegister(Cpu32* cpu, const char* name);
-int       cpuGetRegisterIndex(Cpu32* cpu, const char* name);
+int    cpuGetRegisterIndex(Cpu32* cpu, const char* name);
 
 typedef struct Vm {
     size_t stackSize;

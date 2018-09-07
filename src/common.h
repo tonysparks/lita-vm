@@ -17,4 +17,6 @@ void  litaFree(void* mem);
 
 char* readFile(const char* path);
 
+int   strStartsWith(const char* prefix, const char* str);
+int   strCmpIgnoreCase(const char* a, const char* b);
 #endif

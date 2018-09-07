@@ -223,6 +223,8 @@ size_t opcodeNumArgs(Opcode opcode);
 
 typedef struct Bytecode {
     Address* constants;
+    size_t   numOfConstants;
+    
     Instruction* instrs;
     Address length;
     Address pc;

@@ -2,8 +2,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "common.h"
+
+#ifndef _WINDOWS    
+    #define strcasecmp _stricmp
+#endif
 
 void* litaMalloc(size_t size) {
     return malloc(size);
@@ -51,4 +56,14 @@ char* readFile(const char* path) {
 
     fclose(file);
     return buffer;
+}
+
+int   strStartsWith(const char* prefix, const char* str) {
+    size_t lenpre = strlen(prefix),
+           lenstr = strlen(str);
+    return lenstr < lenpre ? 0 : strncmp(prefix, str, lenpre) == 0;
+}
+
+int   strCmpIgnoreCase(const char* a, const char* b) {
+    return strcasecmp(a, b);
 }

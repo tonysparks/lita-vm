@@ -1,9 +1,11 @@
 #include <stdint.h>
 #include "bytecode.h"
+#include "common.h"
+
 
 Opcode opcodeFromString(const char* opcodeStr) {
     for(size_t i = 0; i < MAX_OPCODES; i++) {
-        if(!strcmp(OpcodeStr[i], opcodeStr)) {
+        if(!strCmpIgnoreCase(OpcodeStr[i], opcodeStr)) {
             return i;
         }
     }

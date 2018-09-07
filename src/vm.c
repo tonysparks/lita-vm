@@ -117,85 +117,44 @@ void   cpuFree(Cpu32* cpu) {
 }
 
 int    cpuGetRegisterIndex(Cpu32* cpu, const char* name) {    
-    if(!strcmp(name, "sp") || !strcmp(name, "SP")) {
+    if(!strcmp(name, "$sp") || !strcmp(name, "$SP")) {
         return 0;
     }
-    else if(!strcmp(name, "pc") || !strcmp(name, "PC")) {
+    else if(!strcmp(name, "$pc") || !strcmp(name, "$PC")) {
         return 1;
     }
-    else if(!strcmp(name, "r") || !strcmp(name, "R")) {
+    else if(!strcmp(name, "$r") || !strcmp(name, "$R")) {
         return 2;
     }
-    else if(!strcmp(name, "h") || !strcmp(name, "H")) {
+    else if(!strcmp(name, "$h") || !strcmp(name, "$H")) {
         return 3;
     }
-    else if(!strcmp(name, "a") || !strcmp(name, "A")) {
+    else if(!strcmp(name, "$a") || !strcmp(name, "$A")) {
         return 4;
     }
-    else if(!strcmp(name, "b") || !strcmp(name, "B")) {
+    else if(!strcmp(name, "$b") || !strcmp(name, "$B")) {
         return 5;
     }
-    else if(!strcmp(name, "c") || !strcmp(name, "C")) {
+    else if(!strcmp(name, "$c") || !strcmp(name, "$C")) {
         return 6;
     }
-    else if(!strcmp(name, "d") || !strcmp(name, "D")) {
+    else if(!strcmp(name, "$d") || !strcmp(name, "$D")) {
         return 7;
     }
-    else if(!strcmp(name, "i") || !strcmp(name, "I")) {
+    else if(!strcmp(name, "$i") || !strcmp(name, "$I")) {
         return 8;
     }
-    else if(!strcmp(name, "j") || !strcmp(name, "J")) {
+    else if(!strcmp(name, "$j") || !strcmp(name, "$J")) {
         return 9;
     }
-    else if(!strcmp(name, "k") || !strcmp(name, "K")) {
+    else if(!strcmp(name, "$k") || !strcmp(name, "$K")) {
         return 10;
     }
-    else if(!strcmp(name, "u") || !strcmp(name, "U")) {
+    else if(!strcmp(name, "$u") || !strcmp(name, "$U")) {
         return 11;
     }
 
     return -1;
-}
-
-Register* cpuGetRegister(Cpu32* cpu, const char* name) {    
-    if(!strcmp(name, "sp") || !strcmp(name, "SP")) {
-        return &cpu->sp;
-    }
-    else if(!strcmp(name, "pc") || !strcmp(name, "PC")) {
-        return &cpu->pc;
-    }
-    else if(!strcmp(name, "r") || !strcmp(name, "R")) {
-        return &cpu->r;
-    }
-    else if(!strcmp(name, "h") || !strcmp(name, "H")) {
-        return &cpu->h;
-    }
-    else if(!strcmp(name, "a") || !strcmp(name, "A")) {
-        return &cpu->a;
-    }
-    else if(!strcmp(name, "b") || !strcmp(name, "B")) {
-        return &cpu->b;
-    }
-    else if(!strcmp(name, "c") || !strcmp(name, "C")) {
-        return &cpu->c;
-    }
-    else if(!strcmp(name, "d") || !strcmp(name, "D")) {
-        return &cpu->d;
-    }
-    else if(!strcmp(name, "i") || !strcmp(name, "I")) {
-        return &cpu->i;
-    }
-    else if(!strcmp(name, "j") || !strcmp(name, "J")) {
-        return &cpu->j;
-    }
-    else if(!strcmp(name, "k") || !strcmp(name, "K")) {
-        return &cpu->k;
-    }
-    else if(!strcmp(name, "u") || !strcmp(name, "U")) {
-        return &cpu->u;
-    }
-
-    return NULL;
 }
 
 Vm*  vmInit(size_t stackSize, size_t ramSize) {
@@ -358,11 +317,11 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
     while(pc <= end) {
         cpu->pc.as.address = pc - code->instrs; 
 
-        Instruction instr = *pc++;
+        Instruction instr = *pc++;        
+        int32_t opcode = OPCODE(instr);
         
         printf("I: %d\n", instr);
-        printf("Opcode: '%s' \n", OpcodeStr[instr]);
-        size_t opcode = OPCODE(instr);
+        printf("Opcode: '%s' \n", OpcodeStr[opcode]);
 
         switch(opcode) {
             case NOOP: {
