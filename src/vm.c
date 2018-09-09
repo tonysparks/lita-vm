@@ -352,9 +352,7 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
 
     Instruction* pc = code->instrs;
     Instruction* end = INSTR_AT(code->length - 1);
-        
-    printf("Executing code\n");
-    
+            
     while(pc <= end) {
         cpu->pc.as.address = (Address)(pc - code->instrs); 
 
@@ -362,9 +360,8 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         int32_t opcode = OPCODE(instr);
         
         
-     //   printf("Opcode: '%5s' Arg1: %5d Arg2: %5d PC: %5d  \n", 
-       //     OpcodeStr[opcode], ARG1_VALUE(instr), ARG2_VALUE(instr), cpu->pc.as.address);
-        
+        //printf("Opcode: '%5s' Arg1: %5d Arg2: %5d PC: %5d  \n", 
+        //    OpcodeStr[opcode], ARG1_VALUE(instr), ARG2_VALUE(instr), cpu->pc.as.address);
 
         switch(opcode) {
             case NOOP: {

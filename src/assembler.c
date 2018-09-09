@@ -74,6 +74,8 @@ static void parseError(const char* format, ...) {
     vfprintf(stderr, format, args);
     va_end(args);
     fputs("\n", stderr);
+
+    exit(32);
 }
 
 static AssemblerInstruction* makeAssemblerInstruction(size_t lineNumber) {
@@ -512,7 +514,7 @@ static AssemblerInstruction* parseLine(size_t lineNumber, const char* line, cons
     char* buf = NULL;
     
     // trim leading spaces
-    for(; *line == ' ' && line < end; line++);
+    for(; (*line == ' ' || *line == '\r') && line < end; line++);
     if(line >= end) {
         return NULL;
     }
@@ -526,6 +528,10 @@ static AssemblerInstruction* parseLine(size_t lineNumber, const char* line, cons
             if(!inString) {
                 inComment = 1;
             }
+        }
+        else if(c == '\r') {
+            // skip
+            continue;
         }
         else if(c == '"') {
             if(inString) {
@@ -563,7 +569,7 @@ static AssemblerInstruction* parseLine(size_t lineNumber, const char* line, cons
     
     if(instr->numberOfArgs > 0) {
         char* arg1 = instr->args[0];
-        //printf("Line: '%s' => len: '%d'  at '%d' \n", arg1, buf_len(arg1), lineNumber);
+        //printf("Line: '%s' => len: '%zu'  at '%zu' \n", arg1, buf_len(arg1), lineNumber);
         if((buf_len(arg1) - 1) > 0) {
             char c = arg1[0];
 
@@ -597,9 +603,9 @@ void parse(Program* program, const char* assembly) {
     AssemblerInstruction* current = NULL;
 
     const char* start = assembly;
-    while(*assembly) {
-        char c = *assembly;
-        if(c == '\n') {
+    for(;;) {
+        char c = *assembly;                
+        if(c == '\n' || c == 0) {
             AssemblerInstruction* next = parseLine(lineNumber, start, assembly);            
             if(next) {                
                 next->address = address;
@@ -621,8 +627,12 @@ void parse(Program* program, const char* assembly) {
             start = assembly + 1;
         }
 
+        if(c == 0) {
+            break;
+        }
+
         assembly++;
-    }
+    } 
 
     program->numberOfInstructions = address;
 }

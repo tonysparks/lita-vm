@@ -4,4 +4,4 @@ REM tcc -o litavm.exe ./src/common.c ./src/buf.c ./src/parser.c ./src/assembler.
 REM ./src/common.c ./src/buf.c ./src/parser.c ./src/assembler.c
 clang -std=c11  -g ./src/main.c -o ./bin/litavm.exe -Wdeprecated-declarations
 cd bin/
-litavm.exe
+litavm.exe %*
