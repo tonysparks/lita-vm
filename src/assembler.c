@@ -668,11 +668,7 @@ void      bytecodeFree(Bytecode* code) {
 }
 
 
-void      disassemble(Bytecode* code) {
-    for(size_t i = 0; i < code->numOfConstants; i++) {
-        //code->
-    }
-
+void      disassemble(Bytecode* code) {    
     for(size_t i = 0; i < code->length; i++) {
         Instruction instr = code->instrs[i];
 
