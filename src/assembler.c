@@ -49,6 +49,8 @@ typedef struct Constant {
         float   floatVal;
         char*   stringVal;
     } as;
+
+    struct Constant* next;
 } Constant;
 
 typedef struct Label {
@@ -61,7 +63,7 @@ typedef struct Program {
     AssemblerInstruction* instrs;
     size_t numberOfInstructions;
 
-    Constant constants[MAX_CONSTANTS];
+    Constant* constants;
     size_t numberOfConstants;
 
     Label*  labels;
@@ -98,6 +100,26 @@ static void freeAssemberInstruction(AssemblerInstruction* instr) {
         buf_free(i->args);
 
         AssemblerInstruction* next = i->next;
+        litaFree(i);
+
+        i = next;
+    }
+}
+
+static void freeConstants(Constant* constants) {
+    Constant* i = constants;
+    while(i) {
+        Constant* next = i->next;
+        litaFree(i);
+
+        i = next;
+    }
+}
+
+static void freeLabels(Label* labels) {
+    Label* i = labels;
+    while(i) {
+        Label* next = i->next;
         litaFree(i);
 
         i = next;
@@ -414,6 +436,7 @@ static void parseConstant(AssemblerInstruction* instrs, Constant* constant, char
 static Address* parseConstants(Vm* vm, Program* program) {
     Address* result = NULL;
     AssemblerInstruction* instrs = program->instrs;
+    Constant* current = NULL;
 
     while(instrs) {
         if(instrs->kind == CONSTANT_DEF) {
@@ -432,10 +455,21 @@ static Address* parseConstants(Vm* vm, Program* program) {
                 parseError("Exceeded max number of constants: '%d' at line: $d", MAX_CONSTANTS, instrs->lineNumber);
             }
 
-            Constant* c = &program->constants[program->numberOfConstants++];
+            Constant* c = (Constant*)litaMalloc(sizeof(Constant));            
             c->index = index++;
             c->name = name;            
             parseConstant(instrs, c, arg, argLen);
+
+            if(!program->constants) {            
+                program->constants = c;
+                
+            }
+            else {
+                current->next = c;
+            }
+
+            current = c;
+            program->numberOfConstants++;
         }
         
         instrs = instrs->next;        
@@ -626,7 +660,7 @@ void parse(Program* program, const char* assembly) {
             lineNumber++;
             start = assembly + 1;
         }
-
+        
         if(c == 0) {
             break;
         }
@@ -642,6 +676,7 @@ Bytecode* compile(Vm* vm, const char* assembly) {
     Program program = {
         .instrs = NULL,
         .numberOfInstructions = 0,        
+        .constants = NULL,
         .numberOfConstants = 0,
         .labels = NULL,
         .numberOfLabels = 0
@@ -663,7 +698,8 @@ Bytecode* compile(Vm* vm, const char* assembly) {
     // TODO - remove AssemblerInstruction heap allocations
     // construct bytecode instructions per line parsing iteration        
     freeAssemberInstruction(program.instrs);    
-    litaFree(program.labels);
+    freeConstants(program.constants);
+    freeLabels(program.labels);
 
     return code;
 }

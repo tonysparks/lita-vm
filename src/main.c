@@ -16,15 +16,17 @@
 #include "assembler.c"
 #include "vm.c"
 
-int main(int argc, char** argv) {
-    if(argc < 2) {
-        printf("<usage> litavm [options] file\n"
+const char* USAGE =
+"<usage> litavm [options] file\n"
         "Options: \n"
         "  -d\t\tShows disassembly output\n"
         "\n\nExample:\n"
         "\tlitavm -d /scripts/hello.asm"
-        );
+;        
 
+int main(int argc, char** argv) {
+    if(argc < 2) {
+        printf("%s", USAGE);
         return 0;
     }
 
@@ -51,12 +53,28 @@ int main(int argc, char** argv) {
     //     "      \n"
     //     ":exit \n"
     //     ;
+    int displayDisassembly = 0;
+    const char* filename = NULL;
+    for(size_t i = 1; i < argc; i++) {
+        if(!strcmp("-d", argv[i])) {
+            displayDisassembly = 1;
+        }
+        else {
+            filename = argv[i];
+        }
+    }
 
-    const char* filename = argv[1];        
+    if(!filename) {
+        printf("%s", USAGE);
+        return 0;
+    }
+    
     const char* assembly = readFile(filename);
     
     Bytecode* code = compile(vm, assembly);
-    disassemble(code);
+    if(displayDisassembly) {
+        disassemble(code);
+    }
     
     vmExecute(vm, code);
     vmFree(vm);
