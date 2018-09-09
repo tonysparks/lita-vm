@@ -191,7 +191,6 @@ static Instruction parseArg2(Vm* vm, Program* program, AssemblerInstruction* ins
     int isRegister = 0;
     int isAddress = (arg[0] == '&') ? 1 : 0;
 
-
     if(isAddress) {
         isRegister = 1;
         instruction |= ARG2_ADDR_MASK;
@@ -275,16 +274,15 @@ static Instruction parseJmp(Vm* vm, Program* program, AssemblerInstruction* inst
 
 static Instruction* parseInstructions(Vm* vm, Program* program) {
     AssemblerInstruction* instrs = program->instrs;
-    Instruction* result = (Instruction*)litaMalloc(sizeof(Instruction) * program->numberOfInstructions);
-
+    Instruction* result = (Instruction*)litaMalloc(sizeof(Instruction) * (program->numberOfInstructions + 1));
+    
     size_t i = 0;
     while(instrs) {
         if(instrs->kind == BYTECODE_DEF) {
             if(instrs->numberOfArgs > 0 && instrs->args) {
                 char* opcodeStr = instrs->args[0];
                 Opcode opcode = opcodeFromString(opcodeStr);
-
-                printf("Parsing Opcode: '%s' \n", opcodeStr);
+                
                 if(opcode < 0) {
                     parseError("Invalid opcode: '%s' at line: %d", opcodeStr, instrs->lineNumber);
                 }
@@ -332,11 +330,13 @@ static Instruction* parseInstructions(Vm* vm, Program* program) {
                 }
                 
                 result[i++] = instruction | arg1 | arg2;
-                printf("Instr: '%d' \n", instruction | arg1 | arg2);
+//                printf("Instr: '%d' \n", instruction | arg1 | arg2);
             }
         }
         instrs = instrs->next;                
     }
+
+    result[i] = NOOP; // end marker
 
     return result;
 }
@@ -488,7 +488,7 @@ static void parseLabels(Vm* vm, Program* program) {
             Label* label = (Label*)litaMalloc(sizeof(Label));
             label->address = instrs->address;
             label->name = labelName;
-
+            
             if(!program->labels) {
                 program->labels = label;
                 
@@ -563,7 +563,7 @@ static AssemblerInstruction* parseLine(size_t lineNumber, const char* line, cons
     
     if(instr->numberOfArgs > 0) {
         char* arg1 = instr->args[0];
-        // printf("Line: '%s' => len: '%d'  at '%d' \n", arg1, buf_len(arg1), lineNumber);
+        //printf("Line: '%s' => len: '%d'  at '%d' \n", arg1, buf_len(arg1), lineNumber);
         if((buf_len(arg1) - 1) > 0) {
             char c = arg1[0];
 
@@ -600,12 +600,13 @@ void parse(Program* program, const char* assembly) {
     while(*assembly) {
         char c = *assembly;
         if(c == '\n') {
-            AssemblerInstruction* next = parseLine(lineNumber, start, assembly);
-            program->numberOfInstructions++;
-
-            if(next) {
-                next->address = address++;
-
+            AssemblerInstruction* next = parseLine(lineNumber, start, assembly);            
+            if(next) {                
+                next->address = address;
+                if(next->kind == BYTECODE_DEF) {
+                    address++;                                        
+                }
+                
                 if(program->instrs == NULL)  {
                     program->instrs = next;                    
                 }
@@ -622,6 +623,8 @@ void parse(Program* program, const char* assembly) {
 
         assembly++;
     }
+
+    program->numberOfInstructions = address;
 }
 
 
@@ -661,5 +664,71 @@ void      bytecodeFree(Bytecode* code) {
         litaFree(code->constants);
         litaFree(code->instrs);
         litaFree(code);
+    }
+}
+
+
+void      disassemble(Bytecode* code) {
+    for(size_t i = 0; i < code->numOfConstants; i++) {
+        //code->
+    }
+
+    for(size_t i = 0; i < code->length; i++) {
+        Instruction instr = code->instrs[i];
+
+        Opcode opcode = OPCODE(instr);
+        printf("%-5zu   %s ", i, OpcodeStr[opcode]);
+        switch(opcode) {
+            case JMP:
+            case CALL:
+                printf("%d", ARG_JMP_VALUE(instr));
+                break;
+            default: {
+                switch(opcodeNumArgs(opcode)) {
+                    case 2:
+                        if(IS_ARG1_ADDR(instr)) {
+                            printf("&");
+                        }
+
+                        printf("%s ", RegisterNames[ARG1_VALUE(instr)]);
+                        // fallthrough
+                    case 1: {
+                        switch(opcode) {
+                            case LDCI:
+                            case LDCB:
+                                if(IS_ARG2_IMM(instr)) {
+                                    printf("%d", ARG2_VALUE(instr));
+                                }
+                                else {
+                                    printf("%d", code->constants[ARG2_VALUE(instr)]);
+                                }
+                                break;
+                            case LDCF:
+                            case LDCA:
+                                printf("%d", code->constants[ARG2_VALUE(instr)]);
+                                break;
+                            default:
+                                if(IS_ARG2_REG(instr)) {
+                                    if(IS_ARG2_ADDR(instr)) {
+                                        printf("&");
+                                    }
+                                    printf("%s", RegisterNames[ARG2_VALUE(instr)]);
+                                }
+                                else {
+                                    if(IS_ARG2_IMM(instr)) {
+                                        printf("#");
+                                    }                                
+                                    printf("%d", ARG2_VALUE(instr));
+                                }
+                        }
+
+                        break;
+                    }
+                    case 0: break;                    
+                }
+            }
+        }
+
+        printf("\n");
     }
 }

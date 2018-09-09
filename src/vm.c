@@ -166,6 +166,7 @@ Vm*  vmInit(size_t stackSize, size_t ramSize) {
     vm->cpu = cpu;
     vm->stackSize = stackSize;
 
+    cpu->sp.as.address = ramSize - 1;
     return vm;
 }
 
@@ -177,6 +178,52 @@ void vmFree(Vm* vm) {
         litaFree(vm);
     }
 }
+
+inline static int8_t getArg2Int32(Vm* vm, Bytecode* code, Instruction instr) {
+    Ram* ram = vm->ram;
+    Cpu32* cpu = vm->cpu;
+
+    if(IS_ARG2_REG(instr)) {
+        return (IS_ARG2_ADDR(instr)) 
+            ? ramReadInt32(ram, cpu->regs[ARG2_VALUE(instr)].as.address)    
+            : cpu->regs[ARG2_VALUE(instr)].as.iVal;
+    }
+
+    return IS_ARG2_IMM(instr) 
+        ? ARG2_VALUE(instr)
+        : ramReadInt32(ram, code->constants[ARG2_VALUE(instr)]);
+}
+
+
+inline static int8_t getArg2Int8(Vm* vm, Bytecode* code, Instruction instr) {
+    Ram* ram = vm->ram;
+    Cpu32* cpu = vm->cpu;
+
+    if(IS_ARG2_REG(instr)) {
+        return (IS_ARG2_ADDR(instr)) 
+            ? ramReadInt8(ram, cpu->regs[ARG2_VALUE(instr)].as.address)    
+            : cpu->regs[ARG2_VALUE(instr)].as.bVal;
+    }
+
+    return IS_ARG2_IMM(instr) 
+        ? ARG2_VALUE(instr)
+        : ramReadInt8(ram, code->constants[ARG2_VALUE(instr)]);
+}
+
+
+inline static float getArg2Float(Vm* vm, Bytecode* code, Instruction instr) {
+    Ram* ram = vm->ram;
+    Cpu32* cpu = vm->cpu;
+
+    if(IS_ARG2_REG(instr)) {
+        return (IS_ARG2_ADDR(instr)) 
+            ? ramReadFloat(ram, cpu->regs[ARG2_VALUE(instr)].as.address)    
+            : cpu->regs[ARG2_VALUE(instr)].as.fVal;
+    }
+
+    return ramReadFloat(ram, code->constants[ARG2_VALUE(instr)]);
+}
+
 
 ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
     ExecutionResult result = {0};
@@ -236,29 +283,23 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
         : cpu->regs[ARG1_VALUE(instr)].as.fVal)
 
 #define GET_ARG2_INT(instr)                                        \
-    ((IS_ARG2_ADDR(instr)) ?                                       \
-        ramReadInt32(ram, cpu->regs[ARG2_VALUE(instr)].as.address) \
-        : cpu->regs[ARG2_VALUE(instr)].as.iVal)
+    getArg2Int32(vm, code, instr)
 
 #define GET_ARG2_FLOAT(instr)                                      \
-    ((IS_ARG2_ADDR(instr)) ?                                       \
-        ramReadFloat(ram, cpu->regs[ARG2_VALUE(instr)].as.address) \
-        : cpu->regs[ARG2_VALUE(instr)].as.fVal)
+    getArg2Float(vm, code, instr)
 
 #define GET_ARG2_INT8(instr)                                       \
-    ((IS_ARG2_ADDR(instr)) ?                                       \
-        ramReadInt8(ram, cpu->regs[ARG2_VALUE(instr)].as.address)  \
-        : cpu->regs[ARG2_VALUE(instr)].as.bVal)
+    getArg2Int8(vm, code, instr)
 
 #define GET_CONST_INT(instr)                                       \
     ((IS_ARG2_IMM(instr)) ?                                        \
-        ramReadInt32(ram, code->constants[ARG2_VALUE(instr)])      \
-        : ARG2_VALUE(instr))
+        ARG2_VALUE(instr)                                          \
+        : ramReadInt32(ram, code->constants[ARG2_VALUE(instr)]))
 
 #define GET_CONST_INT8(instr)                                      \
     ((IS_ARG2_IMM(instr)) ?                                        \
-        ramReadInt8(ram, code->constants[ARG2_VALUE(instr)])       \
-        : (int8_t)ARG2_VALUE(instr))
+        (int8_t)ARG2_VALUE(instr)                                  \
+        : ramReadInt8(ram, code->constants[ARG2_VALUE(instr)]))
 
 #define GET_CONST_FLOAT(instr)                                     \
     (ramReadFloat(ram, code->constants[ARG2_VALUE(instr)]))
@@ -315,13 +356,15 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
     printf("Executing code\n");
     
     while(pc <= end) {
-        cpu->pc.as.address = pc - code->instrs; 
+        cpu->pc.as.address = (Address)(pc - code->instrs); 
 
         Instruction instr = *pc++;        
         int32_t opcode = OPCODE(instr);
         
-        printf("I: %d\n", instr);
-        printf("Opcode: '%s' \n", OpcodeStr[opcode]);
+        
+     //   printf("Opcode: '%5s' Arg1: %5d Arg2: %5d PC: %5d  \n", 
+       //     OpcodeStr[opcode], ARG1_VALUE(instr), ARG2_VALUE(instr), cpu->pc.as.address);
+        
 
         switch(opcode) {
             case NOOP: {

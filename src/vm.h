@@ -56,6 +56,22 @@ typedef struct Cpu32 {
     };
 } Cpu32;
 
+const char* RegisterNames[] = {
+    "$sp",
+    "$pc",
+    "$r",
+    "$h",
+    "$a",
+    "$b",
+    "$c",
+    "$d",
+    "$i",
+    "$j",
+    "$k",
+    "$u",
+    NULL
+};
+
 Cpu32* cpuInit();
 void   cpuFree(Cpu32* cpu);
 int    cpuGetRegisterIndex(Cpu32* cpu, const char* name);
