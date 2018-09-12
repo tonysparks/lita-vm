@@ -74,7 +74,12 @@ const char* RegisterNames[] = {
 
 Cpu32* cpuInit();
 void   cpuFree(Cpu32* cpu);
-int    cpuGetRegisterIndex(Cpu32* cpu, const char* name);
+int    cpuGetRegisterIndex(const char* name);
+
+typedef struct VmConfig {
+    size_t stackSize;
+    size_t ramSize;
+} VmConfig;
 
 typedef struct Vm {
     size_t stackSize;
@@ -82,18 +87,8 @@ typedef struct Vm {
     Cpu32* cpu;
 } Vm;
 
-typedef enum ResultType {
-    SUCCESS,
-    ERROR,
-} ResultType;
-
-typedef struct ExecutionResult {
-    ResultType result;
-} ExecutionResult;
-
-Vm*  vmInit(size_t stackSize, size_t ramSize);
+Vm*  vmInit(VmConfig* config);
 void vmFree(Vm* vm);
-
-ExecutionResult vmExecute(Vm* vm, Bytecode* code);
+void vmExecute(Vm* vm, Bytecode* code);
 
 #endif

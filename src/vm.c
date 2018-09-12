@@ -34,7 +34,14 @@ void ramFree(Ram* ram) {
     }
 }
 
-#define CHECK_RANGE(ram, startAddress, endAddress) do { if( (startAddress) < 0 || ((startAddress) + (endAddress)) >= (ram)->size) vmError("Access violation error at address '0x%x' to '0x%x' \n", (startAddress), ((startAddress) + (endAddress)) ); } while(0)
+#define CHECK_RANGE(ram, startAddress, endAddress)                                  \
+    do {                                                                            \
+        if( (startAddress) < 0 || ((startAddress) + (endAddress)) >= (ram)->size) { \
+            vmError("Access violation error at address '0x%x' to '0x%x' \n",        \
+                (startAddress), ((startAddress) + (endAddress)) );                  \
+            exit(42);                                                               \
+        }                                                                           \
+    } while(0)
 
 void ramStoreString(Ram* ram, Address address, const char* value, size_t len) {
     CHECK_RANGE(ram, address, len);
@@ -116,7 +123,7 @@ void   cpuFree(Cpu32* cpu) {
     }
 }
 
-int    cpuGetRegisterIndex(Cpu32* cpu, const char* name) {    
+int    cpuGetRegisterIndex(const char* name) {    
     if(!strcmp(name, "$sp") || !strcmp(name, "$SP")) {
         return 0;
     }
@@ -157,16 +164,21 @@ int    cpuGetRegisterIndex(Cpu32* cpu, const char* name) {
     return -1;
 }
 
-Vm*  vmInit(size_t stackSize, size_t ramSize) {
-    Ram* ram = ramInit(ramSize);
+Vm*  vmInit(VmConfig* config) {
+    if(config->stackSize > config->ramSize) {
+        vmError("Invalid VM configuration the stack size (%d) is greater than the RAM size (%d)",
+            config->stackSize, config->ramSize);
+    }
+
+    Ram* ram = ramInit(config->ramSize);
     Cpu32* cpu = cpuInit();
 
     Vm* vm = (Vm*) litaMalloc(sizeof(Vm));
     vm->ram = ram;
     vm->cpu = cpu;
-    vm->stackSize = stackSize;
+    vm->stackSize = config->stackSize;
 
-    cpu->sp.as.address = ramSize - 1;
+    cpu->sp.as.address = config->ramSize - 1;
     return vm;
 }
 
@@ -179,7 +191,7 @@ void vmFree(Vm* vm) {
     }
 }
 
-inline static int8_t getArg2Int32(Vm* vm, Bytecode* code, Instruction instr) {
+inline static int32_t getArg2Int32(Vm* vm, Bytecode* code, Instruction instr) {
     Ram* ram = vm->ram;
     Cpu32* cpu = vm->cpu;
 
@@ -225,44 +237,57 @@ inline static float getArg2Float(Vm* vm, Bytecode* code, Instruction instr) {
 }
 
 
-ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
-    ExecutionResult result = {0};
-    
+void vmExecute(Vm* vm, Bytecode* code) {
     Cpu32* cpu = vm->cpu;
     Ram* ram = vm->ram;
 
     if(!code->length || !code->instrs) {
-        return result;
+        return;
     }
 
 #define INSTR_AT(index) (&code->instrs[(index)])
 
 #define SET_ARG1_INT(instr,value)                                                 \
+    SET_ARG1_INT_ARG(instr, ARG1_VALUE(instr), value)
+
+
+#define SET_ARG1_INT_ARG(instr,argValue,value)                                    \
     do {                                                                          \
         if (IS_ARG1_ADDR(instr))                                                  \
-            ramStoreInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
-        else cpu->regs[ARG1_VALUE(instr)].as.iVal = (value);                      \
+            ramStoreInt32(ram, cpu->regs[(argValue)].as.address,(value));         \
+        else cpu->regs[(argValue)].as.iVal = (value);                             \
     } while(0)
 
-#define SET_ARG1_FLOAT(instr,value)       \
-    do {                                  \
-        if (IS_ARG1_ADDR(instr))          \
-            ramStoreFloat(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
-        else cpu->regs[ARG1_VALUE(instr)].as.fVal = (value);                      \
+
+#define SET_ARG1_FLOAT(instr,value)                                               \
+    SET_ARG1_FLOAT_ARG(instr,ARG1_VALUE(instr), value)
+
+#define SET_ARG1_FLOAT_ARG(instr,argValue,value)                                  \
+    do {                                                                          \
+        if (IS_ARG1_ADDR(instr))                                                  \
+            ramStoreFloat(ram, cpu->regs[(argValue)].as.address,(value));         \
+        else cpu->regs[(argValue)].as.fVal = (value);                             \
     } while(0)
 
-#define SET_ARG1_INT8(instr,value)       \
-    do {                                 \
-        if (IS_ARG1_ADDR(instr))         \
-            ramStoreInt8(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
-        else cpu->regs[ARG1_VALUE(instr)].as.bVal = (value);                     \
+
+#define SET_ARG1_INT8(instr,value)                                                \
+    SET_ARG1_INT8_ARG(instr,ARG1_VALUE(instr),value)
+
+#define SET_ARG1_INT8_ARG(instr,argValue,value)                                   \
+    do {                                                                          \
+        if (IS_ARG1_ADDR(instr))                                                  \
+            ramStoreInt8(ram, cpu->regs[(argValue)].as.address,(value));          \
+        else cpu->regs[argValue].as.bVal = (value);                               \
     } while(0)
 
-#define SET_ARG1_ADDR(instr,value)       \
-    do {                                 \
-        if (IS_ARG1_ADDR(instr))         \
-            ramStoreInt32(ram, cpu->regs[ARG1_VALUE(instr)].as.address,(value));  \
-        else cpu->regs[ARG1_VALUE(instr)].as.address = (value);                   \
+#define SET_ARG1_ADDR(instr,value)                                                \
+    SET_ARG1_ADDR_ARG(instr,ARG1_VALUE(instr),value)
+
+#define SET_ARG1_ADDR_ARG(instr,argValue,value)                                   \
+    do {                                                                          \
+        if (IS_ARG1_ADDR(instr))                                                  \
+            ramStoreInt32(ram, cpu->regs[(argValue)].as.address,(value));         \
+        else cpu->regs[(argValue)].as.address = (value);                          \
     } while(0)
 
 
@@ -432,22 +457,22 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
             case POPI: {
                 int32_t value = ramReadInt32(ram, cpu->sp.as.address);
                 cpu->sp.as.address += ADDRESS_SIZE;
-
-                SET_ARG1_INT(instr, value);
+                
+                SET_ARG1_INT_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case POPF: {
                 float value = ramReadFloat(ram, cpu->sp.as.address);
                 cpu->sp.as.address += ADDRESS_SIZE;
 
-                SET_ARG1_FLOAT(instr, value);
+                SET_ARG1_FLOAT_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case POPB: {
                 int8_t value = ramReadInt8(ram, cpu->sp.as.address);
                 cpu->sp.as.address += 1;
 
-                SET_ARG1_INT8(instr, value);
+                SET_ARG1_INT8_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case DUPI: {
@@ -455,7 +480,7 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
                 cpu->sp.as.address -= ADDRESS_SIZE;
                 ramStoreInt32(ram, cpu->sp.as.address, value);
                 
-                SET_ARG1_INT(instr, value);
+                SET_ARG1_INT_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case DUPF: {
@@ -463,7 +488,7 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
                 cpu->sp.as.address -= ADDRESS_SIZE;
                 ramStoreFloat(ram, cpu->sp.as.address, value);
                 
-                SET_ARG1_FLOAT(instr, value);
+                SET_ARG1_FLOAT_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case DUPB: {
@@ -471,7 +496,7 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
                 cpu->sp.as.address -= 1;
                 ramStoreInt8(ram, cpu->sp.as.address, value);
                 
-                SET_ARG1_INT8(instr, value);
+                SET_ARG1_INT8_ARG(instr, ARG2_VALUE(instr), value);
                 break;
             }
             case IFI: {
@@ -709,5 +734,4 @@ ExecutionResult vmExecute(Vm* vm, Bytecode* code) {
 #undef CHECK_DIV_ZERO_INT
 #undef CHECK_DIV_ZERO_INT8
 #undef CHECK_DIV_ZERO_FLOAT
-    return result;
 }

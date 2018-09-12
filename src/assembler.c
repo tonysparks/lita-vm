@@ -7,12 +7,11 @@
 #include "common.h"
 #include "bytecode.h"
 
-
-int cpuGetRegisterIndex(Cpu32* cpu, const char* name);
-
-
-#define MAX_CONSTANTS 1024
 #define MAX_INT32_VALUE 256
+
+int cpuGetRegisterIndex(const char* name);
+
+
 
 typedef enum InstructionKind {
     UNKNOWN,
@@ -127,15 +126,16 @@ static void freeLabels(Label* labels) {
 }
 
 static int findConstantIndex(Program* program, const char* constantName) {
-    int result = -1;
-    for(size_t i = 0; i < program->numberOfConstants; i++) {
-        Constant c = program->constants[i];
-        if(!strcmp(c.name, constantName)) {
-            return c.index;
+    Constant* i = program->constants;
+    while(i) {
+        if(!strcmp(i->name, constantName)) {
+            return i->index;
         }
+
+        i = i->next;
     }
 
-    return result;
+    return -1;
 }
 
 
@@ -152,7 +152,7 @@ static Label* findLabel(Program* program, const char* labelName) {
     return NULL;
 }
 
-static int32_t parseImmediateNumber(AssemblerInstruction* instr, char* arg, size_t argLen) {
+static int32_t parseImmediateNumber(AssemblerInstruction* instr, char* arg, size_t argLen) {    
     size_t base = 10;
     size_t offset = 1;
 
@@ -180,7 +180,7 @@ static int32_t parseImmediateNumber(AssemblerInstruction* instr, char* arg, size
 }
 
 
-static Instruction parseArg1(Vm* vm, Program* program, AssemblerInstruction* instr, char* arg) {
+static Instruction parseArg1(AssemblerInstruction* instr, char* arg) {
     size_t argLen = strlen(arg);
     
     Instruction instruction = 0;    
@@ -195,10 +195,9 @@ static Instruction parseArg1(Vm* vm, Program* program, AssemblerInstruction* ins
         }
 
         arg++; // eat the &
-        argLen--;
     }
 
-    int registerIndex = cpuGetRegisterIndex(vm->cpu, arg);
+    int registerIndex = cpuGetRegisterIndex(arg);
     if(registerIndex < 0) {
         parseError("Invalid register name: '%s' at line: %d", arg, instr->lineNumber);            
     }
@@ -208,7 +207,7 @@ static Instruction parseArg1(Vm* vm, Program* program, AssemblerInstruction* ins
     return instruction << ARG2_SIZE;
 }
 
-static Instruction parseArg2(Vm* vm, Program* program, AssemblerInstruction* instr, char* arg) {
+static Instruction parseArg2(Program* program, AssemblerInstruction* instr, char* arg) {    
     size_t argLen = strlen(arg);
     
     Instruction instruction = 0;
@@ -228,7 +227,7 @@ static Instruction parseArg2(Vm* vm, Program* program, AssemblerInstruction* ins
     }
 
     
-    int registerIndex = cpuGetRegisterIndex(vm->cpu, arg);
+    int registerIndex = cpuGetRegisterIndex(arg);
     if(registerIndex > -1) {
         isRegister = 1;
         instruction |= registerIndex;
@@ -256,7 +255,7 @@ static Instruction parseArg2(Vm* vm, Program* program, AssemblerInstruction* ins
             instruction |= value;
         }
         // if this is a constant, look up the constant index
-        else if(arg[0] == '.') {
+        else if(arg[0] == '.') {            
             char* constantName = arg;
             int index = findConstantIndex(program, constantName);
             if(index < 0) {
@@ -274,7 +273,7 @@ static Instruction parseArg2(Vm* vm, Program* program, AssemblerInstruction* ins
     return instruction;
 }
 
-static Instruction parseJmp(Vm* vm, Program* program, AssemblerInstruction* instr, char* arg) {
+static Instruction parseJmp(Program* program, AssemblerInstruction* instr, char* arg) {
     if(arg[0] == ':') {
         Label* label = findLabel(program, arg);
         if(!label) {
@@ -296,7 +295,7 @@ static Instruction parseJmp(Vm* vm, Program* program, AssemblerInstruction* inst
     return 0;
 }
 
-static Instruction* parseInstructions(Vm* vm, Program* program) {
+static Instruction* parseInstructions(Program* program) {
     AssemblerInstruction* instrs = program->instrs;
     Instruction* result = (Instruction*)litaMalloc(sizeof(Instruction) * (program->numberOfInstructions + 1));
     
@@ -325,7 +324,7 @@ static Instruction* parseInstructions(Vm* vm, Program* program) {
                 switch(opcode) {
                     case JMP:
                     case CALL: {
-                        arg2 = parseJmp(vm, program, instrs, instrs->args[1]);
+                        arg2 = parseJmp(program, instrs, instrs->args[1]);
                         break;
                     }
                     default: {
@@ -336,12 +335,12 @@ static Instruction* parseInstructions(Vm* vm, Program* program) {
                             }
                             case 1: {
                                 // parse with arg2 format options
-                                arg2 = parseArg2(vm, program, instrs, instrs->args[1]);
+                                arg2 = parseArg2(program, instrs, instrs->args[1]);
                                 break;
                             }
                             case 2: {
-                                arg1 = parseArg1(vm, program, instrs, instrs->args[1]);
-                                arg2 = parseArg2(vm, program, instrs, instrs->args[2]);
+                                arg1 = parseArg1(instrs, instrs->args[1]);
+                                arg2 = parseArg2(program, instrs, instrs->args[2]);
                                 break;
                             }
                             default: {
@@ -383,50 +382,77 @@ static void parseConstant(AssemblerInstruction* instrs, Constant* constant, char
         constant->as.stringVal = str;
     }
     else {
-        // TODO: Support 0b, 0x and e number formats, specify number type?
-        int hasDecimal = 0;    
-        int hasNegative = 0;
+        int hasDecimal = 0;
+        int base = 10;
 
-        for(size_t i = 0; i < argLen; i++) {
-            char c = arg[i];
-            if(c == '.') {
-                if(hasDecimal) {
-                    parseError("Invalid constant number expression contains multiple decimals at line: %d", instrs->lineNumber);
+        if(strStartsWith("0x", arg)) {            
+            base = 16;
+
+            for(size_t i = 2; i < argLen; i++) {
+                char c = arg[i];
+                if(!isxdigit(c)) {
+                    parseError("Invalid constant hexidecimal number expression '%s' at line: %d", arg, instrs->lineNumber);
                 }
-
-                hasDecimal++;
             }
-            else if(c == '-') {
-                if(hasNegative) {
-                    parseError("Invalid constant number expression contains multiple negatives at line: %d", instrs->lineNumber);
+
+            arg += 2;
+        }
+        else if(strStartsWith("0b", arg)) {
+            base = 2;
+
+            for(size_t i = 2; i < argLen; i++) {
+                char c = arg[i];
+                if(c != '0' && c != '1') {
+                    parseError("Invalid constant binary number expression '%s' at line: %d", arg, instrs->lineNumber);
                 }
-
-                hasNegative++;
             }
-            else {
-                if(!isdigit(c)) {
-                    parseError("Invalid constant number expression at line: %d", instrs->lineNumber);
+
+            arg += 2;
+        }
+        else {
+            int hasNegative = 0;
+
+            for(size_t i = 0; i < argLen; i++) {
+                char c = arg[i];
+                if(c == '.') {
+                    if(hasDecimal) {
+                        parseError("Invalid constant number expression '%s' contains multiple decimals at line: %d", arg, instrs->lineNumber);
+                    }
+
+                    hasDecimal++;
+                }
+                else if(c == '-') {
+                    if(hasNegative) {
+                        parseError("Invalid constant number expression '%s' contains multiple negatives at line: %d", arg, instrs->lineNumber);
+                    }
+
+                    hasNegative++;
+                }
+                else {
+                    if(!isdigit(c)) {
+                        parseError("Invalid constant number expression '%s' at line: %d", arg, instrs->lineNumber);
+                    }
                 }
             }
         }
-        
+            
         if(hasDecimal) {
             constant->kind = FLOAT;
             constant->as.floatVal = atof(arg);
         }
-        else {
-            int num = atoi(arg);
+        else {            
+            int32_t num = strtol(arg, NULL, base);
             if(num > INT32_MAX || num < INT32_MIN) {
                 parseError("Invalid constant number expression out of range at line: %d", instrs->lineNumber);
             }
 
             if(num <= INT8_MAX && num >= INT8_MIN) {
                 constant->kind = INT8;
-                constant->as.int8Val = num;                
+                constant->as.int8Val = num;
             }
             else {
                 constant->kind = INT32;
-                constant->as.int32Val = num;                
+                constant->as.int32Val = num;  
             }
         }
     }
@@ -438,6 +464,7 @@ static Address* parseConstants(Vm* vm, Program* program) {
     AssemblerInstruction* instrs = program->instrs;
     Constant* current = NULL;
 
+    size_t index = 0;
     while(instrs) {
         if(instrs->kind == CONSTANT_DEF) {
             char* name = instrs->args[0];
@@ -446,15 +473,9 @@ static Address* parseConstants(Vm* vm, Program* program) {
                 parseError("Illegal constant expression: %s at line: %d", name, instrs->lineNumber);
             }
 
-            size_t index = 0;
-
             char* arg = instrs->args[1];
             size_t argLen = strlen(arg);
             
-            if((program->numberOfConstants + 1) > MAX_CONSTANTS) {
-                parseError("Exceeded max number of constants: '%d' at line: $d", MAX_CONSTANTS, instrs->lineNumber);
-            }
-
             Constant* c = (Constant*)litaMalloc(sizeof(Constant));            
             c->index = index++;
             c->name = name;            
@@ -462,7 +483,6 @@ static Address* parseConstants(Vm* vm, Program* program) {
 
             if(!program->constants) {            
                 program->constants = c;
-                
             }
             else {
                 current->next = c;
@@ -474,37 +494,39 @@ static Address* parseConstants(Vm* vm, Program* program) {
         
         instrs = instrs->next;        
     }
-
     Address ramAddress = 0;
     if(program->numberOfConstants > 0) {
         result = (Address*)litaMalloc(sizeof(Address) * program->numberOfConstants);        
         Ram* ram = vm->ram;
-        for(size_t i = 0; i < program->numberOfConstants; i++) {
-            result[i] = ramAddress;            
-            Constant c = program->constants[i];            
-            switch(c.kind) {
+        Constant* c = program->constants;
+        size_t i = 0;
+        while(c) {                        
+            result[i++] = ramAddress;
+            switch(c->kind) {
                 case INT32: {
-                    ramStoreInt32(ram, ramAddress, c.as.int32Val);
+                    ramStoreInt32(ram, ramAddress, c->as.int32Val);
                     ramAddress += 4;
                     break;
                 }
                 case FLOAT: {                    
-                    ramStoreFloat(ram, ramAddress, c.as.floatVal);
+                    ramStoreFloat(ram, ramAddress, c->as.floatVal);
                     ramAddress += 4;
                     break;
                 }
-                case INT8: {
-                    ramStoreInt8(ram, ramAddress, c.as.int8Val);
+                case INT8: {                    
+                    ramStoreInt8(ram, ramAddress, c->as.int8Val);
                     ramAddress += 1;
                     break;
                 }
                 case STRING: {
-                    size_t len = strlen(c.as.stringVal);
-                    ramStoreString(ram, ramAddress, c.as.stringVal, len);
+                    size_t len = strlen(c->as.stringVal);
+                    ramStoreString(ram, ramAddress, c->as.stringVal, len);
                     ramAddress += len + 1;
                     break;
                 }
             }
+
+            c = c->next;
         }
 
     }
@@ -514,7 +536,7 @@ static Address* parseConstants(Vm* vm, Program* program) {
 }
 
 
-static void parseLabels(Vm* vm, Program* program) {    
+static void parseLabels(Program* program) {    
     AssemblerInstruction* instrs = program->instrs;
     Label* current = NULL;
     while(instrs) {
@@ -564,8 +586,7 @@ static AssemblerInstruction* parseLine(size_t lineNumber, const char* line, cons
             }
         }
         else if(c == '\r') {
-            // skip
-            continue;
+            continue; // causes problems if not skipped
         }
         else if(c == '"') {
             if(inString) {
@@ -683,10 +704,10 @@ Bytecode* compile(Vm* vm, const char* assembly) {
     };
 
     parse(&program, assembly);        
-    parseLabels(vm, &program);
+    parseLabels(&program);
 
     Address* constants = parseConstants(vm, &program);
-    Instruction* instructions = parseInstructions(vm, &program);
+    Instruction* instructions = parseInstructions(&program);
 
     Bytecode* code = (Bytecode*)litaMalloc(sizeof(Bytecode));
     code->constants = constants;

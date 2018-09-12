@@ -20,7 +20,7 @@ void* litaRealloc(void* ptr, size_t newSize) {
 
 
 void  litaFree(void* mem) {
-    return free(mem);
+    free(mem);
 }
 
 

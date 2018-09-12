@@ -8,7 +8,7 @@
             "type": "shell",            
             "command": "build.bat",
             "args": [
-                "../examples/hello.asm"
+                "../examples/fib.asm"
             ],
             "group": {
                 "kind": "build",

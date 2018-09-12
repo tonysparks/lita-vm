@@ -19,9 +19,11 @@
 const char* USAGE =
 "<usage> litavm [options] file\n"
         "Options: \n"
-        "  -d\t\tShows disassembly output\n"
+        "  -d,--disassembly         Shows disassembly output\n"
+        "  -s,--stack-size          Set the max stack size.  Defaults to 1024 bytes\n"
+        "  -r,--ram                 Set the amount of RAM in bytes.  Defaults to 1 MiB\n"
         "\n\nExample:\n"
-        "\tlitavm -d /scripts/hello.asm"
+        "\tlitavm -d -s 4096 /scripts/hello.asm"
 ;        
 
 int main(int argc, char** argv) {
@@ -30,34 +32,34 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    Vm* vm = vmInit(1024, 1024 * 1024);
+    VmConfig config;
+    config.ramSize = 1024 * 1024;
+    config.stackSize = 1024;
 
-    // const char* assembly =
-    //     ";; this is a comment \n"
-    //     ".text \"Test\" \n"
-    //     "ldca $a .text  \n" 
-    //     "pushi $a  \n"
-    //     "call :print_string  \n"
-    //     "jmp :exit \n"
-    //     "printi #11  \n"
-    //     ":print_string         \n"
-    //     "        popi $a      \n"
-    //     "    :print_loop  \n"
-    //     "        ifb &$a #0        \n"
-    //     "        jmp :print_end_loop  \n"
-    //     "        printc &$a        \n"
-    //     "        addi $a #1        \n"
-    //     "        jmp :print_loop \n"
-    //     "    :print_end_loop     \n"
-    //     "        ret \n"
-    //     "      \n"
-    //     ":exit \n"
-    //     ;
     int displayDisassembly = 0;
     const char* filename = NULL;
-    for(size_t i = 1; i < argc; i++) {
-        if(!strcmp("-d", argv[i])) {
+
+    for(int i = 1; i < argc; i++) {
+        const char* arg = argv[i];
+
+        if(!strcmp("-d", arg) || !strcmp("--disassembly", arg)) {
             displayDisassembly = 1;
+        }
+        else if(!strcmp("-s", arg) || !strcmp("--stack-size", arg)) {
+            if( (i+1) >= argc) {
+                vmError("Invalid number of parameters, must have a number after stack-size");
+            }
+            const char* param = argv[i+1];
+            config.stackSize = (size_t) strtol(param, NULL, 10);
+            i++;
+        }
+        else if(!strcmp("-r", arg) || !strcmp("--ram", arg)) {
+            if( (i+1) >= argc) {
+                vmError("Invalid number of parameters, must have a number after ram");
+            }
+            const char* param = argv[i+1];
+            config.ramSize = (size_t) strtol(param, NULL, 10);
+            i++;
         }
         else {
             filename = argv[i];
@@ -68,8 +70,11 @@ int main(int argc, char** argv) {
         printf("%s", USAGE);
         return 0;
     }
+    printf("Config %zu %zu \n", config.ramSize, config.stackSize);
     
     const char* assembly = readFile(filename);
+    
+    Vm* vm = vmInit(&config);
     
     Bytecode* code = compile(vm, assembly);
     if(displayDisassembly) {
