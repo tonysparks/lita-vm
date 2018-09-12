@@ -1,5 +1,4 @@
-
-#define __USE_MINGW_ANSI_STDIO 1
+//#define __USE_MINGW_ANSI_STDIO 1
 #define _CRT_SECURE_NO_WARNINGS
 
 // standard includes
@@ -46,7 +45,7 @@ int main(int argc, char** argv) {
             displayDisassembly = 1;
         }
         else if(!strcmp("-s", arg) || !strcmp("--stack-size", arg)) {
-            if( (i+1) >= argc) {
+            if((i + 1) >= argc) {
                 vmError("Invalid number of parameters, must have a number after stack-size");
             }
             const char* param = argv[i+1];
@@ -54,7 +53,7 @@ int main(int argc, char** argv) {
             i++;
         }
         else if(!strcmp("-r", arg) || !strcmp("--ram", arg)) {
-            if( (i+1) >= argc) {
+            if((i + 1) >= argc) {
                 vmError("Invalid number of parameters, must have a number after ram");
             }
             const char* param = argv[i+1];
@@ -70,13 +69,12 @@ int main(int argc, char** argv) {
         printf("%s", USAGE);
         return 0;
     }
-    printf("Config %zu %zu \n", config.ramSize, config.stackSize);
-    
+
     const char* assembly = readFile(filename);
     
     Vm* vm = vmInit(&config);
-    
     Bytecode* code = compile(vm, assembly);
+
     if(displayDisassembly) {
         disassemble(code);
     }
