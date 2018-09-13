@@ -231,5 +231,6 @@ typedef struct Bytecode {
 
 } Bytecode;
 
+void bytecodeFree(Bytecode* code);
 
 #endif

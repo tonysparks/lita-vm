@@ -38,3 +38,11 @@ size_t opcodeNumArgs(Opcode opcode) {
             return 2;
     }
 }
+
+void bytecodeFree(Bytecode* code) {
+    if(code) {
+        litaFree(code->constants);
+        litaFree(code->instrs);
+        litaFree(code);
+    }
+}

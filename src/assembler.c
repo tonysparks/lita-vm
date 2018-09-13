@@ -353,7 +353,6 @@ static Instruction* parseInstructions(Program* program) {
                 }
                 
                 result[i++] = instruction | arg1 | arg2;
-//                printf("Instr: '%d' \n", instruction | arg1 | arg2);
             }
         }
         instrs = instrs->next;                
@@ -724,16 +723,6 @@ Bytecode* compile(Vm* vm, const char* assembly) {
 
     return code;
 }
-
-
-void      bytecodeFree(Bytecode* code) {
-    if(code) {
-        litaFree(code->constants);
-        litaFree(code->instrs);
-        litaFree(code);
-    }
-}
-
 
 void      disassemble(Bytecode* code) {    
     for(size_t i = 0; i < code->length; i++) {

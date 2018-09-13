@@ -719,6 +719,10 @@ void vmExecute(Vm* vm, Bytecode* code) {
 #undef SET_ARG1_FLOAT
 #undef SET_ARG1_INT8
 #undef SET_ARG1_ADDR
+#undef SET_ARG1_INT_ARG   
+#undef SET_ARG1_FLOAT_ARG
+#undef SET_ARG1_INT8_ARG
+#undef SET_ARG1_ADDR_ARG
 #undef GET_ARG1_INT
 #undef GET_ARG1_FLOAT
 #undef GET_ARG2_INT
