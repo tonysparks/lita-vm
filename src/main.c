@@ -80,7 +80,9 @@ int main(int argc, char** argv) {
     }
     
     vmExecute(vm, code);
-    vmFree(vm);
 
+    bytecodeFree(code);
+
+    vmFree(vm);
     return 0;
 }
